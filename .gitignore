@@ -1,0 +1,4 @@
+exports/*.json
+!exports/.gitkeep
+.DS_Store
+Thumbs.db
