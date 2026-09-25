@@ -1,0 +1,73 @@
+name: Publish v0.4.2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/release-v0.4.2.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build release package
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="0.4.2"
+          APP="PSDLE-PS3-Modern-Exporter-v${VERSION}"
+          rm -rf dist
+          mkdir -p "dist/${APP}/exports"
+          cp psdle.ps1 viewer.html viewer.css viewer.js viewer-data.js Run-PSDLE-PS3.cmd Open-Viewer.cmd README.txt README.md "dist/${APP}/"
+          touch "dist/${APP}/exports/.gitkeep"
+          (
+            cd dist
+            zip -qr "${APP}.zip" "${APP}"
+            sha256sum "${APP}.zip" > "${APP}.zip.sha256"
+          )
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="v0.4.2"
+          TITLE="PSDLE PS3 Modern Exporter v0.4.2"
+          ASSET="dist/PSDLE-PS3-Modern-Exporter-v0.4.2.zip"
+          CHECKSUM="${ASSET}.sha256"
+
+          cat > /tmp/release-notes.md <<'EOF'
+          ## PSDLE PS3 Modern Exporter v0.4.2
+
+          Windows PS3 PlayStation entitlement exporter with a redesigned local PSDLE-style library viewer.
+
+          ### Highlights
+          - Current NPSSO → OAuth authorization-code authentication flow.
+          - Windows PowerShell 5.1 and PowerShell 7 compatible OAuth handling through .NET HttpClient.
+          - Fixed absolute Sony authorization/entitlement URI construction.
+          - Strict PS3 filtering using `platformIds = 2147483648` and `downloadType = 0`.
+          - Redesigned viewer with library statistics, search, publisher/size filters, sorting and pagination.
+          - Copy Content ID / package URL actions and expanded item details.
+          - CSV, normalized JSON and raw entitlement export.
+          - Package URLs are shown only when Sony exposes them in the account entitlement data.
+
+          ### Security
+          NPSSO and OAuth access tokens are not written to disk. Exported entitlement/library metadata should still be treated as private account data.
+
+          Download the ZIP below, extract it, and run **Run-PSDLE-PS3.cmd**.
+          EOF
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ASSET" "$CHECKSUM" --clobber
+            gh release edit "$TAG" --title "$TITLE" --notes-file /tmp/release-notes.md
+          else
+            gh release create "$TAG" "$ASSET" "$CHECKSUM" --title "$TITLE" --notes-file /tmp/release-notes.md --target main
+          fi
