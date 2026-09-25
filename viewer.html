@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>PSDLE PS3 Library</title>
+  <link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">P3</div>
+      <div>
+        <div class="eyebrow">PSDLE Modern Exporter</div>
+        <h1>PS3 Library</h1>
+        <p id="summary">No entitlement data loaded. Run Run-PSDLE-PS3.cmd first.</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button id="themeToggle" class="icon-button" type="button" title="Toggle theme" aria-label="Toggle theme">◐</button>
+      <div class="export-menu-wrap">
+        <button id="exportMenuButton" class="secondary" type="button" aria-haspopup="true" aria-expanded="false">Export ▾</button>
+        <div id="exportMenu" class="export-menu hidden" role="menu">
+          <button id="exportCsv" type="button" role="menuitem">Export visible as CSV</button>
+          <button id="exportJson" type="button" role="menuitem">Export visible as JSON</button>
+          <button id="exportRaw" type="button" role="menuitem">Export raw entitlements</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <section class="stats-grid" aria-label="Library statistics">
+      <article class="stat-card">
+        <span class="stat-label">PS3 items</span>
+        <strong id="statItems" class="stat-value">0</strong>
+        <span class="stat-note">Strict PS3 matches</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">Package URLs</span>
+        <strong id="statUrls" class="stat-value">0</strong>
+        <span id="statUrlPct" class="stat-note">0% of PS3 items</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">Known size</span>
+        <strong id="statSize" class="stat-value">0 B</strong>
+        <span class="stat-note">Combined reported size</span>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">All entitlements</span>
+        <strong id="statEntitlements" class="stat-value">0</strong>
+        <span class="stat-note">Returned by Sony</span>
+      </article>
+    </section>
+
+    <section class="library-panel">
+      <div class="panel-topline">
+        <div>
+          <h2>Library</h2>
+          <p>Search, filter, sort, copy IDs, and inspect the original entitlement metadata.</p>
+        </div>
+        <span id="shownCount" class="result-count">0 shown</span>
+      </div>
+
+      <div class="controls">
+        <div class="search-wrap">
+          <span class="search-icon" aria-hidden="true">⌕</span>
+          <input id="search" type="search" placeholder="Search title, Content ID, publisher, Product ID…" autocomplete="off" spellcheck="false">
+          <kbd>Ctrl K</kbd>
+        </div>
+
+        <select id="publisherFilter" aria-label="Filter by publisher">
+          <option value="">All publishers</option>
+        </select>
+
+        <select id="sizeFilter" aria-label="Filter by package size">
+          <option value="all">All sizes</option>
+          <option value="small">Under 1 GB</option>
+          <option value="medium">1–5 GB</option>
+          <option value="large">5 GB+</option>
+          <option value="unknown">Unknown size</option>
+        </select>
+
+        <label class="switch-label" title="Show only entries where Sony exposed a package URL">
+          <input id="withUrl" type="checkbox">
+          <span class="switch" aria-hidden="true"></span>
+          <span>Package URLs only</span>
+        </label>
+
+        <button id="clearFilters" class="ghost" type="button">Clear</button>
+      </div>
+
+      <div id="activeFilters" class="active-filters hidden" aria-live="polite"></div>
+
+      <section id="empty" class="empty hidden">
+        <div class="empty-icon" aria-hidden="true">⌕</div>
+        <h3>No PS3 items found</h3>
+        <p>If entitlement data was fetched successfully, Sony may not expose legacy PS3 DRM records for this account entry.</p>
+      </section>
+
+      <section id="noMatches" class="empty hidden">
+        <div class="empty-icon" aria-hidden="true">∅</div>
+        <h3>No matches</h3>
+        <p>Try clearing filters or searching for a different title, Content ID, product ID, or publisher.</p>
+        <button id="clearFiltersEmpty" class="secondary" type="button">Clear filters</button>
+      </section>
+
+      <div class="table-wrap" id="tableWrap">
+        <table id="table">
+          <thead>
+            <tr>
+              <th class="sortable" data-sort="title"><button type="button">Title <span class="sort-indicator"></span></button></th>
+              <th class="sortable" data-sort="contentId"><button type="button">Content ID <span class="sort-indicator"></span></button></th>
+              <th class="sortable num" data-sort="size"><button type="button">Size <span class="sort-indicator"></span></button></th>
+              <th class="sortable" data-sort="publisher"><button type="button">Publisher <span class="sort-indicator"></span></button></th>
+              <th class="sortable" data-sort="activeDate"><button type="button">Active date <span class="sort-indicator"></span></button></th>
+              <th>Package</th>
+              <th class="actions-col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+
+      <footer class="pager" id="pager">
+        <div class="page-size-wrap">
+          <span>Rows per page</span>
+          <select id="pageSize" aria-label="Rows per page">
+            <option value="50">50</option>
+            <option value="100" selected>100</option>
+            <option value="250">250</option>
+            <option value="500">500</option>
+          </select>
+        </div>
+        <span id="pageInfo" class="page-info">0–0 of 0</span>
+        <div class="pager-buttons">
+          <button id="prevPage" class="secondary small" type="button">Previous</button>
+          <button id="nextPage" class="secondary small" type="button">Next</button>
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <dialog id="detailDialog">
+    <div class="dialog-shell">
+      <div class="dialog-head">
+        <div class="detail-heading">
+          <span id="detailPkgBadge" class="badge">PS3</span>
+          <h2 id="detailTitle">Details</h2>
+          <p id="detailContentId"></p>
+        </div>
+        <button id="closeDialog" class="icon-button" type="button" aria-label="Close details">×</button>
+      </div>
+
+      <div id="detailFields" class="detail-fields"></div>
+
+      <div class="dialog-actions">
+        <button id="copyUrl" type="button">Copy package URL</button>
+        <button id="copyId" class="secondary" type="button">Copy Content ID</button>
+        <button id="copyProductId" class="secondary" type="button">Copy Product ID</button>
+      </div>
+
+      <details class="raw-details">
+        <summary>Raw normalized item JSON</summary>
+        <pre id="detailJson"></pre>
+      </details>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <script src="viewer-data.js"></script>
+  <script src="viewer.js"></script>
+</body>
+</html>
