@@ -71,3 +71,5 @@ jobs:
           else
             gh release create "$TAG" "$ASSET" "$CHECKSUM" --title "$TITLE" --notes-file /tmp/release-notes.md --target main
           fi
+
+# release workflow armed
