@@ -4,17 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark light">
-  <title>PSDLE PS3 Library</title>
+  <title>PSDLE PlayStation Library</title>
   <link rel="stylesheet" href="viewer.css">
 </head>
 <body>
   <header class="app-header">
     <div class="brand">
-      <div class="brand-mark" aria-hidden="true">P3</div>
+      <div class="brand-mark" aria-hidden="true">PS</div>
       <div>
-        <div class="eyebrow">PSDLE Modern Exporter</div>
-        <h1>PS3 Library</h1>
-        <p id="summary">No entitlement data loaded. Run Run-PSDLE-PS3.cmd first.</p>
+        <div class="eyebrow">PSDLE Modern Exporter v0.5.0</div>
+        <h1>PlayStation Library</h1>
+        <p id="summary">No entitlement data loaded. Run Run-PSDLE.cmd first.</p>
       </div>
     </div>
 
@@ -32,16 +32,24 @@
   </header>
 
   <main class="app-main">
+    <section class="platform-tabs" aria-label="Platform filter">
+      <button class="platform-tab active" type="button" data-platform="all">All <span id="countAll">0</span></button>
+      <button class="platform-tab" type="button" data-platform="PS3">PS3 <span id="countPS3">0</span></button>
+      <button class="platform-tab" type="button" data-platform="PS Vita">PS Vita <span id="countVita">0</span></button>
+      <button class="platform-tab" type="button" data-platform="PS4">PS4 <span id="countPS4">0</span></button>
+      <button class="platform-tab" type="button" data-platform="PS5">PS5 <span id="countPS5">0</span></button>
+    </section>
+
     <section class="stats-grid" aria-label="Library statistics">
       <article class="stat-card">
-        <span class="stat-label">PS3 items</span>
+        <span class="stat-label">Library items</span>
         <strong id="statItems" class="stat-value">0</strong>
-        <span class="stat-note">Strict PS3 matches</span>
+        <span class="stat-note">Recognised PS3 / Vita / PS4 / PS5 entries</span>
       </article>
       <article class="stat-card">
         <span class="stat-label">Package URLs</span>
         <strong id="statUrls" class="stat-value">0</strong>
-        <span id="statUrlPct" class="stat-note">0% of PS3 items</span>
+        <span id="statUrlPct" class="stat-note">0% of recognised items</span>
       </article>
       <article class="stat-card">
         <span class="stat-label">Known size</span>
@@ -58,13 +66,13 @@
     <section class="library-panel">
       <div class="panel-topline">
         <div>
-          <h2>Library</h2>
-          <p>Search, filter, sort, copy IDs, and inspect the original entitlement metadata.</p>
+          <h2 id="libraryTitle">All platforms</h2>
+          <p>Search, filter, sort, copy IDs, and inspect entitlement metadata.</p>
         </div>
         <span id="shownCount" class="result-count">0 shown</span>
       </div>
 
-      <div class="controls">
+      <div class="controls controls-platform">
         <div class="search-wrap">
           <span class="search-icon" aria-hidden="true">⌕</span>
           <input id="search" type="search" placeholder="Search title, Content ID, publisher, Product ID…" autocomplete="off" spellcheck="false">
@@ -96,14 +104,14 @@
 
       <section id="empty" class="empty hidden">
         <div class="empty-icon" aria-hidden="true">⌕</div>
-        <h3>No PS3 items found</h3>
-        <p>If entitlement data was fetched successfully, Sony may not expose legacy PS3 DRM records for this account entry.</p>
+        <h3>No supported PlayStation items found</h3>
+        <p>The entitlement response did not contain recognisable PS3, PS Vita, PS4, or PS5 library entries.</p>
       </section>
 
       <section id="noMatches" class="empty hidden">
         <div class="empty-icon" aria-hidden="true">∅</div>
         <h3>No matches</h3>
-        <p>Try clearing filters or searching for a different title, Content ID, product ID, or publisher.</p>
+        <p>Try another platform, clear the filters, or search for a different title, Content ID, product ID, or publisher.</p>
         <button id="clearFiltersEmpty" class="secondary" type="button">Clear filters</button>
       </section>
 
@@ -111,6 +119,7 @@
         <table id="table">
           <thead>
             <tr>
+              <th class="sortable" data-sort="platform"><button type="button">Platform <span class="sort-indicator"></span></button></th>
               <th class="sortable" data-sort="title"><button type="button">Title <span class="sort-indicator"></span></button></th>
               <th class="sortable" data-sort="contentId"><button type="button">Content ID <span class="sort-indicator"></span></button></th>
               <th class="sortable num" data-sort="size"><button type="button">Size <span class="sort-indicator"></span></button></th>
@@ -147,7 +156,7 @@
     <div class="dialog-shell">
       <div class="dialog-head">
         <div class="detail-heading">
-          <span id="detailPkgBadge" class="badge">PS3</span>
+          <span id="detailPlatformBadge" class="badge">PlayStation</span>
           <h2 id="detailTitle">Details</h2>
           <p id="detailContentId"></p>
         </div>
