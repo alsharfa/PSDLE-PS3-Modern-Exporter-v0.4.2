@@ -4,7 +4,6 @@ const FLAGS = {
   PS3: 2147483648n,
   VITA: 134217728n
 };
-const PS5_TYPES = new Set(['PSGD','PSAC','PSAL','PSCONS','PSVC','PSSUBS']);
 const GB = 1024 ** 3;
 const $ = (id) => document.getElementById(id);
 
@@ -57,73 +56,12 @@ function getLegacyPlatforms(platformIds) {
   return out;
 }
 
-function getModernType(e) {
-  return String(firstValue(e, [
-    'gameMeta.type','game_meta.type',
-    'packageType','package_type',
-    'titleMeta.type','title_meta.type',
-    'type'
-  ]) || '').trim().toUpperCase();
-}
-
-function getTitleId(e) {
-  return String(firstValue(e, [
-    'gameMeta.titleId','game_meta.title_id',
-    'titleMeta.titleId','title_meta.title_id',
-    'titleId','title_id'
-  ]) || '').trim().toUpperCase();
-}
-
-function getModernPlatforms(e) {
-  const type = getModernType(e);
-  const titleId = getTitleId(e);
-  const idText = [
-    titleId,
-    firstValue(e, ['id','contentId','content_id']),
-    firstValue(e, ['productId','product_id']),
-    firstValue(e, ['skuId','sku_id'])
-  ].join(' ').toUpperCase();
-
-  if (type.startsWith('PS4')) return ['PS4'];
-  if (type.startsWith('PS5') || PS5_TYPES.has(type)) return ['PS5'];
-
-  if (/\bCUSA\d+/i.test(idText)) return ['PS4'];
-  if (/\bPPSA\d+/i.test(idText)) return ['PS5'];
-
-  return [];
-}
-
 function normalizeUrl(obj) {
   return String(firstValue(obj, [
     'contentUrl','contentURL','content_url',
     'packageUrl','packageURL','package_url',
     'referencePackageUrl','reference_package_url'
   ]) || '').trim();
-}
-
-function getEntitlementAttributes(e) {
-  return toArray(e?.entitlementAttributes || e?.entitlement_attributes)
-    .filter(x => x && typeof x === 'object');
-}
-
-function getModernPackageInfo(e) {
-  const candidates = [e, ...getEntitlementAttributes(e)];
-  let url = '';
-  let size = null;
-
-  for (const c of candidates) {
-    if (!url) url = normalizeUrl(c);
-    if (!Number.isFinite(size)) {
-      const n = Number(firstValue(c, [
-        'packageFileSize','package_file_size',
-        'contentSize','content_size',
-        'size'
-      ]));
-      if (Number.isFinite(n) && n >= 0) size = n;
-    }
-  }
-
-  return { url, size };
 }
 
 function entitlementName(e) {
@@ -141,12 +79,6 @@ function entitlementPublisher(e) {
     'productMeta.publisherName','product_meta.publisher_name',
     'titleMeta.publisherName','title_meta.publisher_name',
     'publisherName','publisher_name','publisher'
-  ]) || '').trim();
-}
-
-function entitlementContentId(e) {
-  return String(firstValue(e, [
-    'contentId','content_id','id'
   ]) || '').trim();
 }
 
@@ -190,45 +122,7 @@ function normalizeLegacyItem(e, c) {
     drmContentType: firstValue(c, ['drmContentType','drm_content_type']),
     drmType: firstValue(c, ['drmType','drm_type']),
     platformIds: String(platformIds || ''),
-    packageType: '',
-    titleId: getTitleId(e),
     source: 'legacy-drm'
-  };
-}
-
-function normalizeModernItem(e) {
-  const platforms = getModernPlatforms(e);
-  if (!platforms.length) return null;
-
-  const packageInfo = getModernPackageInfo(e);
-  const contentId = entitlementContentId(e);
-  const productId = String(firstValue(e, ['productId','product_id']) || '').trim();
-  const skuId = String(firstValue(e, ['skuId','sku_id']) || '').trim();
-  const titleId = getTitleId(e);
-  const type = getModernType(e);
-  const name = entitlementName(e);
-
-  return {
-    platforms,
-    platform: platforms.join(' / '),
-    title: name || titleId || contentId || productId || 'Untitled',
-    contentName: '',
-    gameName: name,
-    contentId,
-    entitlementId: String(e.id || '').trim(),
-    productId,
-    skuId,
-    activeDate: entitlementActiveDate(e),
-    publisher: entitlementPublisher(e),
-    contentSize: packageInfo.size,
-    contentUrl: packageInfo.url,
-    downloadType: null,
-    drmContentType: '',
-    drmType: '',
-    platformIds: '',
-    packageType: type,
-    titleId,
-    source: 'modern-entitlement'
   };
 }
 
@@ -236,26 +130,22 @@ function extractSupported(entitlements) {
   const result = [];
   const seen = new Set();
 
-  function add(item) {
-    if (!item) return;
-    const key = [
-      item.platforms.slice().sort().join('+'),
-      item.contentId,
-      item.productId,
-      item.skuId,
-      item.entitlementId,
-      item.titleId,
-      item.packageType,
-      item.source
-    ].join('|');
-    if (seen.has(key)) return;
-    seen.add(key);
-    result.push(item);
-  }
-
   for (const e of entitlements) {
-    for (const c of getDrmContents(e)) add(normalizeLegacyItem(e, c));
-    add(normalizeModernItem(e));
+    for (const c of getDrmContents(e)) {
+      const item = normalizeLegacyItem(e, c);
+      if (!item) continue;
+
+      const key = [
+        item.platforms.slice().sort().join('+'),
+        item.contentId,
+        item.entitlementId,
+        item.contentUrl
+      ].join('|');
+
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(item);
+    }
   }
 
   return result;
@@ -344,8 +234,6 @@ function applyFilter(resetPage = true) {
       item.entitlementId,
       item.productId,
       item.skuId,
-      item.titleId,
-      item.packageType,
       item.publisher,
       item.contentUrl
     ].some(v => String(v || '').toLowerCase().includes(q));
@@ -383,19 +271,15 @@ function render() {
 
   $('rows').innerHTML = page.map((item, idx) => {
     const absoluteIdx = (currentPage - 1) * pageSize + idx;
-    const secondary = item.productId
-      ? `<span class="subtle">Product: ${esc(item.productId)}</span>`
-      : (item.titleId ? `<span class="subtle">Title ID: ${esc(item.titleId)}</span>` : '');
-
     return `<tr data-idx="${absoluteIdx}">
       <td class="platform-cell">${platformBadges(item.platforms)}</td>
-      <td class="title-cell"><span class="title">${esc(item.title || item.contentName || item.contentId || 'Untitled')}</span>${item.contentName && item.contentName !== item.title ? `<span class="subtle">${esc(item.contentName)}</span>` : ''}${secondary}</td>
-      <td class="mono">${esc(item.contentId || item.titleId || '—')}</td>
+      <td class="title-cell"><span class="title">${esc(item.title || item.contentName || item.contentId || 'Untitled')}</span>${item.contentName && item.contentName !== item.title ? `<span class="subtle">${esc(item.contentName)}</span>` : ''}${item.productId ? `<span class="subtle">Product: ${esc(item.productId)}</span>` : ''}</td>
+      <td class="mono">${esc(item.contentId || '—')}</td>
       <td class="num-cell">${esc(bytes(item.contentSize))}</td>
       <td>${esc(item.publisher || '—')}</td>
       <td>${esc(displayDate(item.activeDate))}</td>
       <td class="url-cell">${item.contentUrl ? `<div class="pkg-link" title="${esc(item.contentUrl)}"><span class="pkg-dot"></span><span class="pkg-url">Available</span></div>` : '<span class="no-url">Not exposed</span>'}</td>
-      <td><div class="row-actions"><button class="secondary copy-id" type="button" data-action="copy-id" title="Copy Content ID">Copy ID</button>${item.contentUrl ? '<button type="button" data-action="copy-url" title="Copy package URL">Copy URL</button>' : ''}</div></td>
+      <td><div class="row-actions"><button class="secondary copy-id" type="button" data-action="copy-id">Copy ID</button>${item.contentUrl ? '<button type="button" data-action="copy-url">Copy URL</button>' : ''}</div></td>
     </tr>`;
   }).join('');
 
@@ -405,7 +289,7 @@ function render() {
       const action = event.target.closest('button')?.dataset.action;
       if (action === 'copy-id') {
         event.stopPropagation();
-        copy(item.contentId || item.titleId, 'ID copied.');
+        copy(item.contentId, 'Content ID copied.');
         return;
       }
       if (action === 'copy-url') {
@@ -458,8 +342,6 @@ function updatePlatformCounts() {
   $('countAll').textContent = items.length.toLocaleString();
   $('countPS3').textContent = platformCount('PS3').toLocaleString();
   $('countVita').textContent = platformCount('PS Vita').toLocaleString();
-  $('countPS4').textContent = platformCount('PS4').toLocaleString();
-  $('countPS5').textContent = platformCount('PS5').toLocaleString();
 }
 
 function setPlatform(platform) {
@@ -467,25 +349,21 @@ function setPlatform(platform) {
   for (const tab of document.querySelectorAll('.platform-tab')) {
     tab.classList.toggle('active', tab.dataset.platform === platform);
   }
-  $('libraryTitle').textContent = platform === 'all' ? 'All platforms' : `${platform} library`;
+  $('libraryTitle').textContent =
+    platform === 'all' ? 'PS3 + PS Vita' : `${platform} library`;
   applyFilter();
 }
 
 function updateActiveFilters() {
   const chips = [];
   if (currentPlatform !== 'all') chips.push(`Platform: ${currentPlatform}`);
-
   const q = $('search').value.trim();
   if (q) chips.push(`Search: ${q}`);
   if ($('publisherFilter').value) chips.push(`Publisher: ${$('publisherFilter').value}`);
-  if ($('sizeFilter').value !== 'all') {
-    chips.push(`Size: ${$('sizeFilter').options[$('sizeFilter').selectedIndex].text}`);
-  }
+  if ($('sizeFilter').value !== 'all') chips.push(`Size: ${$('sizeFilter').options[$('sizeFilter').selectedIndex].text}`);
   if ($('withUrl').checked) chips.push('Package URLs only');
 
-  $('activeFilters').innerHTML = chips
-    .map(c => `<span class="filter-chip">${esc(c)}</span>`)
-    .join('');
+  $('activeFilters').innerHTML = chips.map(c => `<span class="filter-chip">${esc(c)}</span>`).join('');
   $('activeFilters').classList.toggle('hidden', chips.length === 0);
 }
 
@@ -500,7 +378,7 @@ function clearFilters() {
 function openDetail(item) {
   selected = item;
   $('detailTitle').textContent = item.title || item.contentName || 'PlayStation item';
-  $('detailContentId').textContent = item.contentId || item.titleId || 'No Content ID';
+  $('detailContentId').textContent = item.contentId || 'No Content ID';
   $('detailPlatformBadge').textContent = item.platform;
   $('detailPlatformBadge').classList.toggle('has-url', Boolean(item.contentUrl));
 
@@ -508,13 +386,12 @@ function openDetail(item) {
     ['Platforms', item.platform || '—'],
     ['Publisher', item.publisher || '—'],
     ['Package size', bytes(item.contentSize)],
-    ['Package type', item.packageType || 'Legacy DRM'],
-    ['Title ID', item.titleId || '—', true],
     ['Product ID', item.productId || '—', true],
     ['SKU ID', item.skuId || '—', true],
     ['Entitlement ID', item.entitlementId || '—', true],
     ['Active date', displayDate(item.activeDate)],
-    ['Source', item.source || '—'],
+    ['Platform IDs', item.platformIds || '—', true],
+    ['Download type', item.downloadType ?? '—'],
     ['DRM type', item.drmType ?? '—'],
     ['DRM content type', item.drmContentType ?? '—'],
     ['Package URL', item.contentUrl || 'Not exposed by Sony', true, true]
@@ -526,7 +403,7 @@ function openDetail(item) {
 
   $('detailJson').textContent = JSON.stringify(item, null, 2);
   $('copyUrl').disabled = !item.contentUrl;
-  $('copyId').disabled = !(item.contentId || item.titleId);
+  $('copyId').disabled = !item.contentId;
   $('copyProductId').disabled = !item.productId;
   $('detailDialog').showModal();
 }
@@ -549,35 +426,21 @@ function csvEscape(v) {
 
 function exportBaseName() {
   const platform = currentPlatform === 'all'
-    ? 'all'
+    ? 'ps3-psvita'
     : currentPlatform.toLowerCase().replaceAll(' ','-');
   return `psdle-${platform}-${new Date().toISOString().slice(0,10)}`;
 }
 
 function exportCsv() {
   const cols = [
-    ['Platforms','platform'],
-    ['Title','title'],
-    ['Title ID','titleId'],
-    ['Content ID','contentId'],
-    ['Entitlement ID','entitlementId'],
-    ['Product ID','productId'],
-    ['SKU ID','skuId'],
-    ['Publisher','publisher'],
-    ['Package Type','packageType'],
-    ['Content Size','contentSize'],
-    ['Active Date','activeDate'],
-    ['Package URL','contentUrl'],
-    ['Source','source'],
-    ['Download Type','downloadType'],
-    ['DRM Content Type','drmContentType'],
-    ['DRM Type','drmType'],
-    ['Platform IDs','platformIds']
+    ['Platforms','platform'],['Title','title'],['Content ID','contentId'],
+    ['Entitlement ID','entitlementId'],['Product ID','productId'],['SKU ID','skuId'],
+    ['Publisher','publisher'],['Content Size','contentSize'],['Active Date','activeDate'],
+    ['Package URL','contentUrl'],['Download Type','downloadType'],
+    ['DRM Content Type','drmContentType'],['DRM Type','drmType'],['Platform IDs','platformIds']
   ];
   const lines = [cols.map(x => csvEscape(x[0])).join(',')];
-  for (const item of visible) {
-    lines.push(cols.map(x => csvEscape(item[x[1]])).join(','));
-  }
+  for (const item of visible) lines.push(cols.map(x => csvEscape(item[x[1]])).join(','));
   downloadText(`${exportBaseName()}.csv`, '\ufeff' + lines.join('\r\n'), 'text/csv');
   closeExportMenu();
 }
@@ -623,10 +486,7 @@ function toast(text) {
 function updateStats() {
   const base = platformBaseItems();
   const urlCount = base.filter(x => x.contentUrl).length;
-  const knownSize = base.reduce(
-    (sum, x) => sum + (Number.isFinite(x.contentSize) ? x.contentSize : 0),
-    0
-  );
+  const knownSize = base.reduce((sum, x) => sum + (Number.isFinite(x.contentSize) ? x.contentSize : 0), 0);
 
   $('statItems').textContent = base.length.toLocaleString();
   $('statUrls').textContent = urlCount.toLocaleString();
@@ -661,29 +521,22 @@ function closeExportMenu() {
 function load() {
   loadTheme();
   rawEntitlements = window.PSDLE_RAW || null;
-  const ents = Array.isArray(rawEntitlements?.entitlements)
-    ? rawEntitlements.entitlements
-    : [];
+  const ents = Array.isArray(rawEntitlements?.entitlements) ? rawEntitlements.entitlements : [];
 
   items = extractSupported(ents);
 
   meta = {
-    version: '0.5.0',
+    version: '0.5.1',
     fetchedAt: new Date().toISOString(),
     totalEntitlements: ents.length,
     supportedItems: items.length,
     ps3Items: platformCount('PS3'),
     vitaItems: platformCount('PS Vita'),
-    ps4Items: platformCount('PS4'),
-    ps5Items: platformCount('PS5'),
-    classification: {
-      legacy: 'PS3 bit 2147483648; PS Vita bit 134217728; legacy downloadType=0',
-      modern: 'PS4*/PS5*/PSGD-style package types with CUSA/PPSA fallback'
-    }
+    classification: 'Legacy PSDLE bit-mask matching: PS3=2147483648, PS Vita=134217728, downloadType=0'
   };
 
   $('summary').textContent = rawEntitlements
-    ? `${items.length.toLocaleString()} recognised items · PS3 ${meta.ps3Items.toLocaleString()} · Vita ${meta.vitaItems.toLocaleString()} · PS4 ${meta.ps4Items.toLocaleString()} · PS5 ${meta.ps5Items.toLocaleString()} · ${ents.length.toLocaleString()} total entitlements`
+    ? `${items.length.toLocaleString()} legacy items · PS3 ${meta.ps3Items.toLocaleString()} · PS Vita ${meta.vitaItems.toLocaleString()} · ${ents.length.toLocaleString()} total entitlements`
     : 'No entitlement data loaded. Run Run-PSDLE.cmd first.';
 
   populatePublishers();
@@ -707,43 +560,29 @@ $('pageSize').addEventListener('change', () => {
   currentPage = 1;
   render();
 });
-
 $('prevPage').addEventListener('click', () => {
-  if (currentPage > 1) {
-    currentPage--;
-    render();
-    $('tableWrap').scrollTo({top:0, behavior:'smooth'});
-  }
+  if (currentPage > 1) { currentPage--; render(); $('tableWrap').scrollTo({top:0, behavior:'smooth'}); }
 });
-
 $('nextPage').addEventListener('click', () => {
   const totalPages = Math.ceil(visible.length / pageSize);
-  if (currentPage < totalPages) {
-    currentPage++;
-    render();
-    $('tableWrap').scrollTo({top:0, behavior:'smooth'});
-  }
+  if (currentPage < totalPages) { currentPage++; render(); $('tableWrap').scrollTo({top:0, behavior:'smooth'}); }
 });
 
 for (const th of document.querySelectorAll('th.sortable')) {
   th.querySelector('button').addEventListener('click', () => setSort(th.dataset.sort));
 }
 
-$('exportMenuButton').addEventListener('click', (e) => {
-  e.stopPropagation();
-  toggleExportMenu();
-});
+$('exportMenuButton').addEventListener('click', (e) => { e.stopPropagation(); toggleExportMenu(); });
 $('exportMenu').addEventListener('click', e => e.stopPropagation());
 document.addEventListener('click', closeExportMenu);
 
 $('exportCsv').addEventListener('click', exportCsv);
 $('exportJson').addEventListener('click', exportJson);
 $('exportRaw').addEventListener('click', exportRaw);
-
 $('themeToggle').addEventListener('click', toggleTheme);
 $('closeDialog').addEventListener('click', () => $('detailDialog').close());
 $('copyUrl').addEventListener('click', () => copy(selected?.contentUrl, 'Package URL copied.'));
-$('copyId').addEventListener('click', () => copy(selected?.contentId || selected?.titleId, 'ID copied.'));
+$('copyId').addEventListener('click', () => copy(selected?.contentId, 'Content ID copied.'));
 $('copyProductId').addEventListener('click', () => copy(selected?.productId, 'Product ID copied.'));
 $('detailDialog').addEventListener('click', e => {
   if (e.target === $('detailDialog')) $('detailDialog').close();
