@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$Version = '0.5.0'
+$Version = '0.5.1'
 $Root = $PSScriptRoot
 $ExportDir = Join-Path $Root 'exports'
 $ViewerData = Join-Path $Root 'viewer-data.js'
@@ -265,7 +265,7 @@ function Get-Entitlements([string]$AccessToken) {
 
 try {
     Write-Host ''
-    Write-Host "PSDLE PlayStation Library Exporter v$Version" -ForegroundColor White
+    Write-Host "PSDLE PS3 & PS Vita Exporter v$Version" -ForegroundColor White
     Write-Host 'Uses your PlayStation account entitlement data. Your NPSSO and OAuth token are not saved.' -ForegroundColor DarkGray
     Write-Host ''
     Write-Host '1. Sign in to https://www.playstation.com/ in your browser.'
@@ -302,8 +302,8 @@ try {
     Write-Step 'Opening PlayStation library viewer...'
     Start-Process $ViewerHtml
     Write-Host ''
-    Write-Host 'The viewer supports PS3, PS Vita, PS4 and PS5 entitlement metadata.' -ForegroundColor DarkGray
-    Write-Host 'Use the platform tabs and Export menu for platform-specific CSV or JSON.' -ForegroundColor DarkGray
+    Write-Host 'The viewer supports PS3 and PS Vita legacy entitlement metadata.' -ForegroundColor DarkGray
+    Write-Host 'Use the PS3 / PS Vita tabs and Export menu for platform-specific CSV or JSON.' -ForegroundColor DarkGray
     Write-Host ''
 } catch {
     Write-Host ''
