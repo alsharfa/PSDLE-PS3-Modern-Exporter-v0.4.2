@@ -264,8 +264,6 @@ pre { margin: 0; padding: 13px; border-top: 1px solid var(--line); overflow: aut
 }
 .platform-ps3 { color: #8fc0ff; background: rgba(59,130,246,.12); }
 .platform-ps-vita { color: #7ee7da; background: rgba(45,212,191,.10); }
-.platform-ps4 { color: #a9bfff; background: rgba(99,102,241,.10); }
-.platform-ps5 { color: #f3f6ff; background: rgba(148,163,184,.12); }
 .controls-platform {
   grid-template-columns: minmax(320px, 1.7fr) minmax(180px,.7fr) minmax(145px,.5fr) auto auto;
 }
