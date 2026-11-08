@@ -1,31 +1,26 @@
-# PSDLE PlayStation Library Exporter v0.5.0
+# PSDLE PS3 & PS Vita Exporter v0.5.1
 
-A Windows tool for exporting PlayStation Network entitlement/library metadata from your own account and browsing it in a local PSDLE-style interface.
+A Windows tool for exporting PS3 and PS Vita PlayStation Network entitlement/library metadata from your own account and browsing it in a local PSDLE-style interface.
 
 ## Supported platforms
 
 - PS3
 - PS Vita
-- PS4
-- PS5
 
 ## Features
 
 - Uses the current NPSSO → OAuth authorization-code flow.
 - Uses .NET `HttpClient` for Windows PowerShell 5.1 and PowerShell 7 compatibility.
 - Keeps the working v0.4.x authentication path unchanged.
-- Legacy PS3/Vita detection uses PSDLE-style platform bit flags:
+- Uses the original PSDLE-style legacy platform bit flags:
   - PS3: `2147483648`
   - PS Vita: `134217728`
-- Modern PS4/PS5 detection uses entitlement/package metadata:
-  - PS4: `PS4*` package types such as `PS4GD`
-  - PS5: `PS5*` and `PSGD`-style types
-  - CUSA/PPSA title-ID fallbacks when package type metadata is absent
-- Cross-buy legacy entries can show multiple platforms.
-- Platform tabs: All / PS3 / PS Vita / PS4 / PS5.
+- Uses bit-mask matching rather than exact equality, so cross-buy entries can correctly show more than one supported platform.
+- Legacy downloadable entries are selected with `downloadType = 0`.
+- Platform tabs: All / PS3 / PS Vita.
 - Search, publisher and size filters, package-URL-only filter, sorting and pagination.
-- Displays title, platform, Content ID, Title ID, Product ID, SKU, publisher, package type, size, active date and entitlement metadata.
-- Shows package/content URLs only when Sony exposes them in the entitlement response.
+- Displays title, platform, Content ID, Product ID, SKU, publisher, package size, active date and DRM metadata.
+- Shows package/content URLs only when Sony includes them in the entitlement response.
 - Exports the current filtered view to CSV or JSON, plus raw entitlement JSON.
 
 ## Usage
@@ -36,7 +31,7 @@ A Windows tool for exporting PlayStation Network entitlement/library metadata fr
 4. Run `Run-PSDLE.cmd`.
 5. Paste the NPSSO into the PowerShell window. Input is hidden.
 6. The tool fetches the account entitlements and opens `viewer.html`.
-7. Choose All / PS3 / PS Vita / PS4 / PS5 and export the view you want.
+7. Choose All / PS3 / PS Vita and export the view you want.
 
 ## Output
 
@@ -49,12 +44,10 @@ A Windows tool for exporting PlayStation Network entitlement/library metadata fr
 - OAuth access tokens are not written to disk.
 - `viewer-data.js` and files in `exports/` contain account/library metadata and should be treated as private.
 
-## v0.5.0
+## v0.5.1
 
-- Added PS Vita.
-- Added PS4.
-- Added PS5.
-- Added platform tabs, badges, counts and platform-specific exports.
-- Changed legacy platform detection from exact equality to bit-mask matching, improving cross-buy handling.
-- Added PS4/PS5 package-type and CUSA/PPSA classification fallbacks.
-- Renamed the main launcher to `Run-PSDLE.cmd`; the old `Run-PSDLE-PS3.cmd` remains as a compatibility launcher.
+- Removed PS4 support.
+- Removed PS5 support.
+- Kept PS3 and PS Vita only.
+- Retained cross-buy bit-mask detection.
+- Kept direct legacy `contentUrl` package links where Sony exposes them.
