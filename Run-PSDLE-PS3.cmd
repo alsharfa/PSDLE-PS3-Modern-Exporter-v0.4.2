@@ -1,11 +1,3 @@
 @echo off
-setlocal
-cd /d "%~dp0"
-title PSDLE PS3 Modern Exporter v0.4.2
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0psdle.ps1"
-if errorlevel 1 (
-  echo.
-  echo PSDLE stopped with an error. Read the message above.
-  pause
-)
-endlocal
+rem Backward-compatible launcher. v0.5.0 now supports PS3, PS Vita, PS4 and PS5.
+call "%~dp0Run-PSDLE.cmd"
