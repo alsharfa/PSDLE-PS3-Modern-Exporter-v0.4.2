@@ -1,0 +1,81 @@
+name: Publish v0.5.0
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/release-v0.5.0.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build release package
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="0.5.0"
+          APP="PSDLE-PlayStation-Library-Exporter-v${VERSION}"
+          rm -rf dist
+          mkdir -p "dist/${APP}/exports"
+          cp psdle.ps1 viewer.html viewer.css viewer.js viewer-data.js Run-PSDLE.cmd Run-PSDLE-PS3.cmd Open-Viewer.cmd README.txt README.md "dist/${APP}/"
+          touch "dist/${APP}/exports/.gitkeep"
+          (
+            cd dist
+            zip -qr "${APP}.zip" "${APP}"
+            sha256sum "${APP}.zip" > "${APP}.zip.sha256"
+          )
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="v0.5.0"
+          TITLE="PSDLE PlayStation Library Exporter v0.5.0"
+          ASSET="dist/PSDLE-PlayStation-Library-Exporter-v0.5.0.zip"
+          CHECKSUM="${ASSET}.sha256"
+
+          cat > /tmp/release-notes.md <<'EOF'
+          ## PSDLE PlayStation Library Exporter v0.5.0
+
+          Multi-platform PlayStation entitlement exporter and local PSDLE-style library viewer.
+
+          ### New in v0.5.0
+          - Added **PS Vita** support.
+          - Added **PS4** support.
+          - Added **PS5** support.
+          - Added **All / PS3 / PS Vita / PS4 / PS5** platform tabs.
+          - Added platform badges, counts and platform-specific CSV/JSON exports.
+          - Changed legacy PS3/Vita classification to bit-mask matching for cross-buy entitlements.
+          - PS3 platform bit: `2147483648`.
+          - PS Vita platform bit: `134217728`.
+          - PS4 classification supports `PS4*` entitlement/package types and CUSA fallbacks.
+          - PS5 classification supports `PS5*` / `PSGD`-style types and PPSA fallbacks.
+          - Modern package/reference URLs are displayed only when Sony exposes them.
+          - Added the general launcher **Run-PSDLE.cmd**.
+          - Kept **Run-PSDLE-PS3.cmd** as a backward-compatible launcher.
+
+          ### Authentication
+          The working v0.4.x NPSSO → OAuth authorization-code flow is unchanged.
+
+          ### Security
+          NPSSO and OAuth access tokens are not written to disk. Exported entitlement/library metadata should still be treated as private account data.
+
+          Download the ZIP below, extract it, and run **Run-PSDLE.cmd**.
+          EOF
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ASSET" "$CHECKSUM" --clobber
+            gh release edit "$TAG" --title "$TITLE" --notes-file /tmp/release-notes.md
+          else
+            gh release create "$TAG" "$ASSET" "$CHECKSUM" --title "$TITLE" --notes-file /tmp/release-notes.md --target main
+          fi
