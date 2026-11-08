@@ -1,0 +1,86 @@
+name: Publish v0.5.1
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/release-v0.5.1.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Validate PS3 and PS Vita viewer
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check viewer.js
+          grep -q 'PS3' viewer.html
+          grep -q 'PS Vita' viewer.html
+          grep -q "0.5.1" psdle.ps1
+          ! grep -q 'data-platform="PS4"' viewer.html
+          ! grep -q 'data-platform="PS5"' viewer.html
+          ! grep -q 'getModernPlatforms' viewer.js
+          ! grep -q 'normalizeModernItem' viewer.js
+
+      - name: Build release package
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="0.5.1"
+          APP="PSDLE-PS3-PSVita-Exporter-v${VERSION}"
+          rm -rf dist
+          mkdir -p "dist/${APP}/exports"
+          cp psdle.ps1 viewer.html viewer.css viewer.js viewer-data.js Run-PSDLE.cmd Run-PSDLE-PS3.cmd Open-Viewer.cmd README.txt README.md "dist/${APP}/"
+          touch "dist/${APP}/exports/.gitkeep"
+          (
+            cd dist
+            zip -qr "${APP}.zip" "${APP}"
+            sha256sum "${APP}.zip" > "${APP}.zip.sha256"
+          )
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="v0.5.1"
+          TITLE="PSDLE PS3 & PS Vita Exporter v0.5.1"
+          ASSET="dist/PSDLE-PS3-PSVita-Exporter-v0.5.1.zip"
+          CHECKSUM="${ASSET}.sha256"
+
+          cat > /tmp/release-notes.md <<'EOF'
+          ## PSDLE PS3 & PS Vita Exporter v0.5.1
+
+          Focused legacy PlayStation entitlement exporter for **PS3 and PS Vita**.
+
+          ### v0.5.1
+          - Removed PS4 support.
+          - Removed PS5 support.
+          - Kept **PS3** and **PS Vita** only.
+          - PS3 detection uses platform bit `2147483648`.
+          - PS Vita detection uses platform bit `134217728`.
+          - Legacy entries use `downloadType = 0`.
+          - Uses bit-mask detection for cross-buy entitlements.
+          - Direct legacy `contentUrl` package links are displayed when Sony exposes them.
+          - Platform tabs: **All / PS3 / PS Vita**.
+          - CSV, JSON and raw-entitlement export remain available.
+          - Working NPSSO → OAuth authorization flow is unchanged.
+
+          Download the ZIP below, extract it, and run **Run-PSDLE.cmd**.
+          EOF
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ASSET" "$CHECKSUM" --clobber
+            gh release edit "$TAG" --title "$TITLE" --notes-file /tmp/release-notes.md
+          else
+            gh release create "$TAG" "$ASSET" "$CHECKSUM" --title "$TITLE" --notes-file /tmp/release-notes.md --target main
+          fi
